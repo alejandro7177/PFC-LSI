@@ -1,0 +1,5 @@
+outs:
+- md5: 5713bc264371f57dc835602f426377de.dir
+  size: 89038844
+  nfiles: 12
+  path: 1_raw

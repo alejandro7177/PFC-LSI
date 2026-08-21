@@ -1,0 +1,5 @@
+outs:
+- md5: 19d727661ecca28c9c0f68be9456987c.dir
+  size: 187198628
+  nfiles: 6
+  path: vectorStores

@@ -1,0 +1,5 @@
+outs:
+- md5: 49c336db2e0db449161842b8ed502057.dir
+  size: 5459280
+  nfiles: 5
+  path: 3_gold
