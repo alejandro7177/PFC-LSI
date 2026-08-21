@@ -1,0 +1,121 @@
+# ==============================================================================
+# CONFIGURACIÓN GENERAL DEL PROYECTO
+# ==============================================================================
+project:
+  name: "rag-keyword-preprocessing"
+  version: "1.0.0"
+  seed: 42
+
+# ==============================================================================
+# RUTAS DE ARCHIVOS Y DIRECTORIOS (I/O)
+# ==============================================================================
+paths:
+  raw_data_dir: "data/1_raw"
+  interim_data_dir: "data/2_interim"
+  processed_data_dir: "data/3_processed"
+  artifacts_dir: "data/artifacts"
+  reports_dir: "reports/figures"
+  vector_stores_dir: "vectorStores"
+
+  # Archivos específicos predeterminados
+  default_input_csv: "data/1_raw/dataset_v_032524.csv"
+  dataset_csv: "data/dataset.csv"
+  valid_keywords_json: "data/artifacts/kw_mapping_df30.json"
+  vocabulary_json: "data/artifacts/vocabulary.json"
+  questions_csv: "data/questions_v1_1000.csv"
+  papers_processed_csv: "data/1_raw/papers_processed.csv"
+
+# ==============================================================================
+# CONFIGURACIÓN DE EXTRACCIÓN DE PAPERS (ArxivExtractor)
+# ==============================================================================
+arxiv_extractor:
+  query: "cat:physics.ao-ph"
+  max_results: 10000
+
+# ==============================================================================
+# CONFIGURACIÓN DE EXTRACCIÓN DE KEYWORDS (KeywordExtractor)
+# ==============================================================================
+keyword_extractor:
+  model_name: "Qwen/Qwen3-Embedding-0.6B"
+  vocab_path: "data/artifacts/vocabulary.json"
+  spacy_model: "en_core_web_sm"
+  top_n: 4
+
+# ==============================================================================
+# CONFIGURACIÓN DE FILTRADO Y MAPEO DE KEYWORDS (KeywordCleaner)
+# ==============================================================================
+keyword_cleaner:
+  col_target: "kw_v1"
+  output_col: "kw_v1_df30"
+  min_df_threshold: 30  # Frecuencia mínima de documento para conservar keyword
+  delimiter: ","
+
+# ==============================================================================
+# CONFIGURACIÓN DE NORMALIZACIÓN DE PLN (KeywordNormalizer)
+# ==============================================================================
+keyword_normalizer:
+  spacy_model: "en_core_web_sm"
+  disable_components:
+    - "parser"
+    - "ner"
+  use_spellcheck: true
+  language: "en"
+  input_col: "keywords_qwen"
+  output_col: "keywords_normalized"
+
+# ==============================================================================
+# CONFIGURACIÓN DE GENERACIÓN DE PREGUNTAS (QuestionGenerator)
+# ==============================================================================
+question_generator:
+  model_name: "google/gemma-4-12B-it"
+  prompt_path: "prompts/question_generation_v1.md"
+  max_new_tokens: 256
+  cuda_gpu: "1"
+  batch_size: 16
+  kw_column: "kw_v1_df30"
+  num_questions: 1000
+  group_size: 5
+  random_state: 42
+
+# ==============================================================================
+# CONFIGURACIÓN DE LIMPIEZA DE PREGUNTAS (QuestionCleaner)
+# ==============================================================================
+question_cleaner:
+  input_col: "question_gemma4_12b"
+  output_col: "question_gemma4_12b_clean"
+
+# ==============================================================================
+# CONFIGURACIÓN DE ALMACÉN VECTORIAL FAISS (FAISSRepository / FaissVectorStore)
+# ==============================================================================
+faiss_repository:
+  model_name: "Qwen/Qwen3-Embedding-8B"
+  gemma_model_name: "google/embeddinggemma-300m"
+  batch_size: 128
+  use_gpu: true
+  normalize: true
+  top_k: 5
+  vector_store_dir: "vectorStores/Qwen-8B"
+  gemma_vector_store_dir: "vectorStores/gemma4"
+  mapping_path: "data/2_processed/keywords_mapping.json"
+
+# ==============================================================================
+# CONFIGURACIÓN DE PARÁMETROS VISUALES Y REPORTES (KeywordVisualizer / KeywordStatistics)
+# ==============================================================================
+visualization:
+  dpi: 300
+  top_n_bar_chart: 20
+  wordcloud:
+    width: 1600
+    height: 800
+    background_color: "white"
+  histogram:
+    bins: 20
+
+# ==============================================================================
+# CONFIGURACIÓN DE EVALUACIÓN DE RETRIEVAL
+# ==============================================================================
+evaluation:
+  n_samples: 2000
+  top_k: 20
+  random_state: 17
+  eval_retrieval_output_csv: "data/eval_retrieval_gemma4.csv"
