@@ -5,5 +5,5 @@ __pycache__/
 .pytest_cache/
 pyrightconfig.json
 vectorStores/
-/vectorStores
 /reports
+/vectorStores

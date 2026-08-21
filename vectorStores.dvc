@@ -1,5 +1,12 @@
+md5: 1ca5069bda2209fbc2b7927912d5211b
+frozen: true
+deps:
+- path: .
+  repo:
+    url: https://huggingface.co/datasets/ale7177/PFC-vectorstores
+    rev_lock: f9e40740ed1c4fabca07559c2f03679ae43ecf12
 outs:
-- md5: 19d727661ecca28c9c0f68be9456987c.dir
-  size: 187198628
-  nfiles: 6
+- md5: 6182ab1cab63e493111ab05d61922c59.dir
+  size: 3533
+  nfiles: 7
   path: vectorStores
