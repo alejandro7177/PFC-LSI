@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from typing import Generator
 import spacy
@@ -39,9 +40,15 @@ class KeywordExtractorFilter(Filter):
 
     def process(self, stream: Generator[dict, None, None]) -> Generator[dict, None, None]:
         top_n = config.get("keyword_extractor.top_n", 4)
-        with open(self.vocab_path, "r", encoding="utf-8") as f:
-            vocabulary = json.load(f)
-        vectorizer = CountVectorizer(vocabulary=vocabulary, ngram_range=(1, 1))
+        vectorizer = None
+        if self.vocab_path and os.path.exists(self.vocab_path):
+            try:
+                with open(self.vocab_path, "r", encoding="utf-8") as f:
+                    vocabulary = json.load(f)
+                if vocabulary:
+                    vectorizer = CountVectorizer(vocabulary=vocabulary, ngram_range=(1, 1))
+            except Exception:
+                vectorizer = None
 
         for item in stream:
             abstract = item.get("abstract", "")

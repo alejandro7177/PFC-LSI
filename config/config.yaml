@@ -12,7 +12,7 @@ project:
 paths:
   raw_data_dir: "data/1_raw"
   interim_data_dir: "data/2_interim"
-  processed_data_dir: "data/3_processed"
+  processed_data_dir: "data/2_processed"
   artifacts_dir: "data/artifacts"
   reports_dir: "reports/figures"
   vector_stores_dir: "vectorStores"
@@ -20,7 +20,7 @@ paths:
   # Archivos específicos predeterminados
   default_input_csv: "data/1_raw/dataset_v_032524.csv"
   dataset_csv: "data/dataset.csv"
-  valid_keywords_json: "data/artifacts/kw_mapping_df30.json"
+  valid_keywords_json: "data/2_processed/kw_mapping_df30.json"
   vocabulary_json: "data/artifacts/vocabulary.json"
   questions_csv: "data/questions_v1_1000.csv"
   papers_processed_csv: "data/1_raw/papers_processed.csv"
@@ -30,7 +30,7 @@ paths:
 # ==============================================================================
 arxiv_extractor:
   query: "cat:physics.ao-ph"
-  max_results: 10000
+  max_results: 1000
 
 # ==============================================================================
 # CONFIGURACIÓN DE EXTRACCIÓN DE KEYWORDS (KeywordExtractor)
@@ -45,8 +45,8 @@ keyword_extractor:
 # CONFIGURACIÓN DE FILTRADO Y MAPEO DE KEYWORDS (KeywordCleaner)
 # ==============================================================================
 keyword_cleaner:
-  col_target: "kw_v1"
-  output_col: "kw_v1_df30"
+  col_target: "keywords"
+  output_col: "keywords_filtered"
   min_df_threshold: 30  # Frecuencia mínima de documento para conservar keyword
   delimiter: ","
 
