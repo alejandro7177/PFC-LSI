@@ -22,7 +22,7 @@ paths:
   dataset_csv: "data/dataset.csv"
   valid_keywords_json: "data/2_processed/kw_mapping_df30.json"
   vocabulary_json: "data/artifacts/vocabulary.json"
-  questions_csv: "data/questions_v1_1000.csv"
+  questions_csv: "data/3_gold/questions_v1_1000.csv"
   papers_processed_csv: "data/1_raw/papers_processed.csv"
 
 # ==============================================================================
@@ -119,3 +119,25 @@ evaluation:
   top_k: 20
   random_state: 17
   eval_retrieval_output_csv: "data/eval_retrieval_gemma4.csv"
+  metrics_summary_csv: "data/3_gold/metrics_summary.csv"
+  evaluated_questions_csv: "data/3_gold/questions_v1_1000_evaluated.csv"
+
+
+# ==============================================================================
+# CONFIGURACIÓN DEL SISTEMA RAG CON GEMMA 4 12B (RAG System & Pipes)
+# ==============================================================================
+rag_system:
+  llm:
+    model_name: "google/gemma-4-12B-it"
+    cuda_gpu: "0"
+    torch_dtype: "bfloat16" # bfloat16, float16 o float32
+    max_new_tokens: 512
+    temperature: 0.2
+    top_p: 0.95
+    do_sample: true
+  retrieval:
+    strategy: "dense" # dense, keyword_filtered
+    top_k: 5
+    vector_store_dir: "vectorStores/gemma4"
+  prompt:
+    system_instruction: "Eres un asistente de investigación altamente preciso especializado en resumir y responder preguntas basadas exclusivamente en el contexto científico proporcionado."

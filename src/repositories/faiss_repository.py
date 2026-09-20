@@ -10,6 +10,8 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 from src.core.config import config
+from src.core.dto import RetrievedDocument
+from src.repositories.base import BaseVectorRepository
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +23,16 @@ class SearchResult:
     abstract: str
     keywords: str
 
+    def to_dto(self) -> RetrievedDocument:
+        return RetrievedDocument(
+            doc_id=self.doc_id,
+            score=self.score,
+            abstract=self.abstract,
+            keywords=self.keywords,
+        )
 
-class FAISSRepository:
+
+class FAISSRepository(BaseVectorRepository):
     def __init__(
         self,
         model_name: str | None = None,
