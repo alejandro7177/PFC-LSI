@@ -8,7 +8,6 @@ from src.core.config import config
 logger = logging.getLogger(__name__)
 
 
-
 class RetrievalMetricsCalculator:
     """Calculador de métricas individuales y grupales de Information Retrieval (IR)."""
 
@@ -64,9 +63,42 @@ class RetrievalMetricsCalculator:
         matches = len(expected_set.intersection(retrieved_set))
         return matches / len(expected_ids)
 
+    @staticmethod
+    def compute_rrf(qwen_list: list[str], gemma_list: list[str], k: int = 60, top_n: int = 20) -> list[str]:
+        """
+        Calcula la fusión RRF (Reciprocal Rank Fusion) para dos listas de recuperados.
+        Score(d) = 1/(k + r_qwen(d)) + 1/(k + r_gemma(d))
+        Retorna los top_n documentos con mayor score.
+        """
+        scores: dict[str, float] = {}
+
+        for rank, doc_id in enumerate(qwen_list, start=1):
+            scores[doc_id] = scores.get(doc_id, 0.0) + (1.0 / (k + rank))
+
+        for rank, doc_id in enumerate(gemma_list, start=1):
+            scores[doc_id] = scores.get(doc_id, 0.0) + (1.0 / (k + rank))
+
+        # Ordenar documentos por score descendente
+        sorted_docs = sorted(scores.keys(), key=lambda d: scores[d], reverse=True)
+        return sorted_docs[:top_n]
+
+    @staticmethod
+    def compute_union_limit(qwen_list: list[str], gemma_list: list[str]) -> list[str]:
+        """
+        Calcula la unión sin duplicados de las listas de recuperados de Qwen y Gemma.
+        Preserva el orden de aparición.
+        """
+        seen = set()
+        union_docs = []
+        for doc_id in qwen_list + gemma_list:
+            if doc_id not in seen:
+                seen.add(doc_id)
+                union_docs.append(doc_id)
+        return union_docs
+
 
 class RetrievalEvaluator:
-    """Evaluador de modelos de recuperación de información (Gemma vs Qwen)."""
+    """Evaluador de modelos de recuperación de información (Gemma vs Qwen, RRF y Unión)."""
 
     def __init__(self, doc_id_cols: list[str] | None = None):
         self.doc_id_cols = doc_id_cols or [f"doc_id_{i}" for i in range(1, 6)]
@@ -162,6 +194,98 @@ class RetrievalEvaluator:
         summary_df = pd.DataFrame([gemma_summary, qwen_summary])
         return summary_df, df_evaluated
 
+    def run_rrf_and_union_evaluation(
+        self,
+        csv_path: str | Path,
+        k_rrf: int = 60,
+        top_n: int = 20
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Calcula RRF y Unión empírica fila por fila conservando todas las columnas originales.
+        Devuelve (summary_df, detailed_df con rrf_docs, rrf_res, rrf_mrr, union_docs, union_res).
+        """
+        csv_path = Path(csv_path)
+        if not csv_path.exists():
+            raise FileNotFoundError(f"No se encontró el archivo CSV en: {csv_path}")
+
+        logger.info(f"Cargando dataset para RRF y Unión desde: {csv_path}")
+        df = pd.read_csv(csv_path)
+
+        qwen_mrr_list = []
+        qwen_recall_list = []
+        gemma_mrr_list = []
+        gemma_recall_list = []
+
+        rrf_docs_list = []
+        rrf_res_list = []
+        rrf_mrr_list = []
+
+        union_docs_list = []
+        union_res_list = []
+
+        for _, row in df.iterrows():
+            expected = self._extract_expected_ids(row)
+            qwen_list = self._parse_retrieved_list(row.get("qwen", "[]"))
+            gemma_list = self._parse_retrieved_list(row.get("gemma", "[]"))
+
+            # Métricas individuales de modelos
+            q_mrr = self.calculator.reciprocal_rank(expected, qwen_list, k=top_n)
+            q_rec = self.calculator.recall_at_k(expected, qwen_list, k=top_n)
+            g_mrr = self.calculator.reciprocal_rank(expected, gemma_list, k=top_n)
+            g_rec = self.calculator.recall_at_k(expected, gemma_list, k=top_n)
+
+            qwen_mrr_list.append(round(q_mrr, 4))
+            qwen_recall_list.append(round(q_rec, 4))
+            gemma_mrr_list.append(round(g_mrr, 4))
+            gemma_recall_list.append(round(g_rec, 4))
+
+            # RRF (Ensamble)
+            rrf_docs = self.calculator.compute_rrf(qwen_list, gemma_list, k=k_rrf, top_n=top_n)
+            rrf_rec = self.calculator.recall_at_k(expected, rrf_docs, k=top_n)
+            rrf_mrr = self.calculator.reciprocal_rank(expected, rrf_docs, k=top_n)
+
+            rrf_docs_list.append(json.dumps(rrf_docs))
+            rrf_res_list.append(round(rrf_rec, 4))
+            rrf_mrr_list.append(round(rrf_mrr, 4))
+
+            # Unión Empírica Máxima
+            union_docs = self.calculator.compute_union_limit(qwen_list, gemma_list)
+            union_rec = self.calculator.recall_at_k(expected, union_docs, k=len(union_docs))
+
+            union_docs_list.append(json.dumps(union_docs))
+            union_res_list.append(round(union_rec, 4))
+
+        detailed_df = df.copy()
+        detailed_df["rrf_docs"] = rrf_docs_list
+        detailed_df["rrf_res"] = rrf_res_list
+        detailed_df["rrf_mrr"] = rrf_mrr_list
+        detailed_df["union_docs"] = union_docs_list
+        detailed_df["union_res"] = union_res_list
+
+        total_queries = len(df)
+
+        def get_summary_row(name: str, recall_series: pd.Series, mrr_series: pd.Series | None):
+            zero_failures = int((recall_series == 0.0).sum())
+            fail_pct = (zero_failures / total_queries) * 100 if total_queries > 0 else 0.0
+            mrr_val = f"{mrr_series.mean():.4f}" if mrr_series is not None else "N/A"
+            return {
+                "Enfoque": name,
+                "Mean Recall@20": f"{recall_series.mean():.4f}",
+                "Mean MRR": mrr_val,
+                "Fallos Totales (Recall=0.0)": zero_failures,
+                "% Fallos": f"{fail_pct:.2f}%",
+            }
+
+        summary_rows = [
+            get_summary_row("Qwen", pd.Series(qwen_recall_list), pd.Series(qwen_mrr_list)),
+            get_summary_row("Gemma", pd.Series(gemma_recall_list), pd.Series(gemma_mrr_list)),
+            get_summary_row("RRF (Ensamble)", pd.Series(rrf_res_list), pd.Series(rrf_mrr_list)),
+            get_summary_row("Unión Máxima (Qwen ∪ Gemma)", pd.Series(union_res_list), None),
+        ]
+
+        summary_df = pd.DataFrame(summary_rows)
+        return summary_df, detailed_df
+
     @staticmethod
     def format_results_table(summary_df: pd.DataFrame) -> str:
         """Formatea el DataFrame de métricas como una tabla Markdown sin dependencias externas."""
@@ -180,4 +304,3 @@ class RetrievalEvaluator:
             for row in rows
         ]
         return "\n".join([header_line, separator_line] + row_lines)
-

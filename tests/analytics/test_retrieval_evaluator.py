@@ -42,6 +42,25 @@ class TestRetrievalMetricsCalculator:
         retrieved = ["10", "20", "100", "200"]
         assert RetrievalMetricsCalculator.recall_at_k(expected, retrieved, k=20) == 0.4
 
+    def test_compute_rrf(self):
+        qwen = ["doc1", "doc2", "doc3"]
+        gemma = ["doc2", "doc4", "doc1"]
+
+        # doc1 rank 1 in qwen (1/61), rank 3 in gemma (1/63) -> score ~ 0.03226
+        # doc2 rank 2 in qwen (1/62), rank 1 in gemma (1/61) -> score ~ 0.03252
+        # doc2 should be ranked 1st in RRF
+        rrf = RetrievalMetricsCalculator.compute_rrf(qwen, gemma, k=60, top_n=20)
+        assert rrf[0] == "doc2"
+        assert rrf[1] == "doc1"
+        assert set(rrf) == {"doc1", "doc2", "doc3", "doc4"}
+
+    def test_compute_union_limit(self):
+        qwen = ["doc1", "doc2"]
+        gemma = ["doc2", "doc3"]
+
+        union = RetrievalMetricsCalculator.compute_union_limit(qwen, gemma)
+        assert union == ["doc1", "doc2", "doc3"]
+
 
 class TestRetrievalEvaluator:
     @pytest.fixture
@@ -78,6 +97,23 @@ class TestRetrievalEvaluator:
 
         assert "gemma_mrr" in detailed_df.columns
         assert "qwen_mrr" in detailed_df.columns
+        assert len(detailed_df) == 2
+
+    def test_run_rrf_and_union_evaluation(self, sample_csv_path: Path):
+        evaluator = RetrievalEvaluator()
+        summary_df, detailed_df = evaluator.run_rrf_and_union_evaluation(sample_csv_path, k_rrf=60, top_n=20)
+
+        assert not summary_df.empty
+        assert "Enfoque" in summary_df.columns
+        assert "Mean Recall@20" in summary_df.columns
+        assert "Mean MRR" in summary_df.columns
+        assert "Fallos Totales (Recall=0.0)" in summary_df.columns
+
+        assert "rrf_docs" in detailed_df.columns
+        assert "rrf_res" in detailed_df.columns
+        assert "rrf_mrr" in detailed_df.columns
+        assert "union_docs" in detailed_df.columns
+        assert "union_res" in detailed_df.columns
         assert len(detailed_df) == 2
 
     def test_format_results_table(self):

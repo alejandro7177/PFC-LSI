@@ -121,6 +121,7 @@ evaluation:
   eval_retrieval_output_csv: "data/eval_retrieval_gemma4.csv"
   metrics_summary_csv: "data/3_gold/metrics_summary.csv"
   evaluated_questions_csv: "data/3_gold/questions_v1_1000_evaluated.csv"
+  questions_v2_rrf_union_csv: "data/3_gold/questions_v2_rrf_union.csv"
 
 
 # ==============================================================================
