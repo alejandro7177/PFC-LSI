@@ -142,3 +142,13 @@ rag_system:
     vector_store_dir: "vectorStores/gemma4"
   prompt:
     system_instruction: "Eres un asistente de investigación altamente preciso especializado en resumir y responder preguntas basadas exclusivamente en el contexto científico proporcionado."
+
+# ==============================================================================
+# CONFIGURACIÓN DE EVALUACIÓN CROSS-VALIDATION DE RELEVANCIA DE DOCUMENTOS CON GEMMA
+# ==============================================================================
+doc_relevance_cv:
+  prompt_path: "prompts/context_sufficiency.md"
+  n_folds: 5
+  random_state: 42
+  output_summary_csv: "data/3_gold/doc_relevance_cv_summary.csv"
+  output_detailed_csv: "data/3_gold/doc_relevance_cv_detailed.csv"
