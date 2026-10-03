@@ -1,5 +1,4 @@
-# KernelRAG 🚀
-### Sistema Avanzado de Recuperación y Generación Aumentada (RAG) sobre Literatura Científica
+# Consultas Científicas en Ciencias Atmosféricas asistidas por RAG
 
 KernelRAG es un framework completo de **Retrieval-Augmented Generation (RAG)** diseñado para procesar, estructurar, evaluar y responder consultas complejas sobre un corpus de artículos científicos de arXiv (categoría `physics.ao-ph`, ~8,440 abstracts).
 
